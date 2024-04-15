@@ -1,10 +1,20 @@
 {
-  "name": "utilities",
-  "version": "0.0.1",
-  "description": "",
-  "author": "",
-  "private": true,
+  "name": "@vn.chemgio/utilities",
+  "version": "0.0.1-alpha",
+  "description": "A library for database connection, log management ....",
+  "author": "Vn-ChemGio <vn.chemgio@yahoo.com> (https://github.com/Vn-ChemGio)",
+  "private": false,
   "license": "UNLICENSED",
+  "main": "dist/libs/utilities/index.js",
+  "types": "dist/libs/utilities/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "libs/*",
+    "*.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"libs/**/*.ts\"",
@@ -17,7 +27,9 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "tsc": "tsc -p ./libs/utilities/tsconfig.lib.json",
+    "prepublishOnly": "npm run tsc"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -82,5 +94,12 @@
     "moduleNameMapper": {
       "^@unifygpt.ai/utilities(|/.*)$": "<rootDir>/libs/utilities/src/$1"
     }
-  }
+  },
+  "directories": {
+    "test": "test"
+  },
+  "keywords": [
+    "nestjs",
+    "typeorm"
+  ]
 }
