@@ -35,10 +35,7 @@ export class UsersController {
         new: '{}',
         status: 'COMPLETED',
         timestamp: new Date(),
-      },
-      {
-        verbose: true,
-      },
+      }
     );
     //return this.usersService.findAll();
   }
