@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { Audit } from '../utils/types';
 import PangeaResponse from '../utils/response';
 import {
   canonicalizeEvent,

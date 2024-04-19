@@ -2,8 +2,6 @@
 // Author: Pangea Cyber Corporation
 
 import * as CryptoJS from 'crypto-js';
-import { Audit } from './types';
-
 import { Verifier } from './signer';
 import { canonicalizeEnvelope, canonicalizeEvent } from './utils';
 

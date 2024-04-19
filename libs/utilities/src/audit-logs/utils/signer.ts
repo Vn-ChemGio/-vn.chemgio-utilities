@@ -6,7 +6,6 @@ import {
   verify,
 } from 'node:crypto';
 import fs from 'fs';
-import { Vault } from './types';
 import { PangeaErrors } from './errors';
 
 const allowedKeyTypes = ['ed25519'];

@@ -1,4 +1,3 @@
-import { AcceptedResult, Audit } from './types';
 import { PangeaResponse } from './response';
 
 export namespace PangeaErrors {

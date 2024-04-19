@@ -6,7 +6,6 @@ import { crc32c } from '@aws-crypto/crc32c';
 import CryptoJS from 'crypto-js';
 
 import { PangeaErrors } from './errors';
-import { Audit, FileScan } from './types';
 
 function orderKeysRecursive(obj: Object) {
   const orderedEntries = Object.entries(obj).sort((a, b) =>

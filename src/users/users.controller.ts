@@ -34,6 +34,7 @@ export class UsersController {
         old: '{}',
         new: '{}',
         status: 'COMPLETED',
+        timestamp: new Date(),
       },
       {
         verbose: true,
