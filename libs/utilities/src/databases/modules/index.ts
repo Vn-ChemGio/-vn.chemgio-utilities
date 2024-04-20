@@ -1,1 +1,1 @@
-export * from './databases.module';
+export * from './typeorm.module';

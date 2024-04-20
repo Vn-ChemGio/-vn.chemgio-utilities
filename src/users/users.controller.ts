@@ -5,14 +5,16 @@ import {
   Get,
   Param,
   Patch,
-  Post,
+  Post, UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuditLogsService } from '@unifygpt.ai/utilities/audit-logs/services';
+import { AuthenticateGuard } from './auth.guard';
 
 @Controller('users')
+@UseGuards(AuthenticateGuard)
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,
@@ -26,18 +28,7 @@ export class UsersController {
 
   @Get()
   findAll() {
-    return this.auditLogsService.log(
-      {
-        message: 'findAll',
-        action: 'findAll',
-        target: 'Hello',
-        old: '{}',
-        new: '{}',
-        status: 'COMPLETED',
-        timestamp: new Date(),
-      }
-    );
-    //return this.usersService.findAll();
+    return this.usersService.findAll();
   }
 
   @Get(':id')

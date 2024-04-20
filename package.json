@@ -1,6 +1,6 @@
 {
   "name": "@vn.chemgio/utilities",
-  "version": "0.0.3-alpha-2",
+  "version": "0.0.4-alpha-3",
   "description": "A library for database connection, log management ....",
   "author": "Vn-ChemGio <vn.chemgio@yahoo.com> (https://github.com/Vn-ChemGio)",
   "private": false,
@@ -29,7 +29,12 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "tsc": "tsc -p ./libs/utilities/tsconfig.lib.json",
-    "prepublishOnly": "npm run tsc"
+    "prepublishOnly": "npm run tsc",
+    "typeorm": "ts-node ./node_modules/typeorm/cli",
+    "typeorm:generate-migration": "npm run typeorm -- -d ./typeOrm.config.ts migration:generate ./migrations/$npm_config_name",
+    "typeorm:create-migration": "npm run typeorm -- migration:create ./migrations/$npm_config_name",
+    "typeorm:run-migrations": "npm run typeorm migration:run -- -d ./typeOrm.config.ts",
+    "typeorm:revert-migration": "npm run typeorm -- -d ./typeOrm.config.ts migration:revert"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

@@ -5,7 +5,7 @@ import { Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseEntity } from '@unifygpt.ai/utilities';
 
 @Entity()
-export class User extends BaseEntity {
+export class UserEntity extends BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   @ApiProperty({
     type: string,
