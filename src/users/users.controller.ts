@@ -5,13 +5,14 @@ import {
   Get,
   Param,
   Patch,
-  Post, UseGuards,
+  Post,
+  UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { AuditLogsService } from '@unifygpt.ai/utilities/audit-logs/services';
 import { AuthenticateGuard } from './auth.guard';
+import { AuditLogsService } from '@unifygpt.ai/utilities';
 
 @Controller('users')
 @UseGuards(AuthenticateGuard)

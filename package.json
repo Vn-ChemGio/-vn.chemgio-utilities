@@ -1,6 +1,6 @@
 {
   "name": "@vn.chemgio/utilities",
-  "version": "0.0.4-alpha-3",
+  "version": "0.0.5-alpha-1",
   "description": "A library for database connection, log management ....",
   "author": "Vn-ChemGio <vn.chemgio@yahoo.com> (https://github.com/Vn-ChemGio)",
   "private": false,
