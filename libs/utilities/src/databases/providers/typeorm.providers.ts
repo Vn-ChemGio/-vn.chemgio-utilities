@@ -5,9 +5,9 @@ import {
   DataSource,
   DataSourceOptions,
   DeepPartial,
-  FindOneOptions,
-  FindOptionsWhereProperty,
+  FindOptionsWhere,
   getMetadataArgsStorage,
+  ObjectId,
   Repository,
 } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
@@ -60,7 +60,7 @@ const getCustomRepository = <T extends BaseEntity & { id: string | number } = Ba
     }),
 
   createMany(createData: DeepPartial<T>[]) {
-    const result = this.repository.create(
+    const result = repository.create(
       createData.map((item) => ({
         ...item,
         createdBy: request.user?.id,
@@ -70,28 +70,9 @@ const getCustomRepository = <T extends BaseEntity & { id: string | number } = Ba
     return this.repository.save(result);
   },
 
-  findById(
-    id: FindOptionsWhereProperty<T['id'], T['id']>,
-    options?: FindOneOptions<T>,
-  ) {
-    return this.findOne({
-      ...options,
-      where: { id },
-    } as FindOneOptions<T>);
-  },
 
-  findByIdOrFail(
-    id: FindOptionsWhereProperty<T['id'], T['id']>,
-    options?: FindOneOptions<T>,
-  ) {
-    return this.findOneOrFail({
-      ...options,
-      where: { id },
-    } as FindOneOptions<T>);
-  },
-
-  updateById(id: T['id'], updateDatabaseDto: QueryDeepPartialEntity<T>) {
-    return this.repository.update(id, {
+  update(criteria: string | string[] | number | number[] | Date | Date[] | ObjectId | ObjectId[] | FindOptionsWhere<T>, updateDatabaseDto: QueryDeepPartialEntity<T>) {
+    return repository.update(criteria, {
       ...updateDatabaseDto,
       updatedBy: request.user?.id,
     });
@@ -101,7 +82,7 @@ const getCustomRepository = <T extends BaseEntity & { id: string | number } = Ba
     entityOrEntities: QueryDeepPartialEntity<T>,
     conflictPathsOrOptions: string[] | UpsertOptions<T>,
   ) {
-    return this.repository.upsert(
+    return repository.upsert(
       {
         ...entityOrEntities,
         createdBy: request.user?.id,
