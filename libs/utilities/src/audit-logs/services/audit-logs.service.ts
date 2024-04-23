@@ -18,7 +18,7 @@ import {
 export class AuditLogsService {
   protected prevUnpublishedRootHash?: string;
   private publishedRoots: PublishedRoots;
-  
+
   constructor(
     @Inject(REQUEST) private request: Request,
     private readonly httpService: HttpService,
@@ -27,7 +27,7 @@ export class AuditLogsService {
     this.publishedRoots = {};
     this.prevUnpublishedRootHash = undefined;
   }
-  
+
   /**
    * @summary Log an entry
    * @description Create a log entry in the Secure Audit Log.
@@ -62,16 +62,16 @@ export class AuditLogsService {
   public async log(event: Audit.EventData, options: Audit.LogOptions = {}) {
     const data = this.getLogEvent(event, options);
     this.setRequestFields(data, options);
-    
+
     const response: PangeaResponse<Audit.LogResponse> = await this.httpService
                                                                   .post('v1/log', data)
                                                                   .toPromise()
                                                                   .then((response) => response.data);
-    
+
     this.processLogResponse(response.result, options);
     return response;
   }
-  
+
   /**
    * @summary Log multiple entries
    * @description Create multiple log entries in the Secure Audit Log.
@@ -98,32 +98,33 @@ export class AuditLogsService {
     events.forEach((event) => {
       logEvents.push(this.getLogEvent(event, options));
     });
-    
+
     const data: Audit.LogBulkRequest = {
       events: logEvents,
       verbose: options.verbose,
+      config_id: this.configService.get('AUDIT_LOG_CONFIG_ID'),
     };
-    
+
     options.verify = false; // Bulk API does not verify
     const response: PangeaResponse<Audit.LogBulkResponse> =
       await this.httpService
                 .post('v2/log', data)
                 .toPromise()
                 .then((result) => result.data);
-    
+
     response.result.results.forEach((result) => {
       this.processLogResponse(result, options);
     });
     return response;
   }
-  
+
   private getLogEvent(
     event: Audit.Event,
     options: Audit.LogOptions,
   ): Audit.LogData {
     event.tenant_id = this.request.user?.organizationId;
     event.actor = this.request.user?.id;
-    
+
     const ip =
       this.request.headers['x-forwarded-for'] ||
       this.request.connection?.remoteAddress;
@@ -134,38 +135,38 @@ export class AuditLogsService {
       method,
       userAgent,
     });
-    
+
     event = eventOrderAndStringifySubfields(event);
     const data: Audit.LogData = {
       event: event,
       config_id: this.configService.get('AUDIT_LOG_CONFIG_ID'),
     };
-    
+
     if (options.signer) {
       const signer = options.signer;
       const signature = signer.sign(canonicalizeEvent(event));
       const pubKey = signer.getPublicKey();
       const algorithm = signer.getAlgorithm();
-      
+
       const publicKeyInfo: { [key: string]: any } = {};
       if (options.publicKeyInfo) {
         Object.assign(publicKeyInfo, options.publicKeyInfo);
       }
       publicKeyInfo['key'] = pubKey;
       publicKeyInfo['algorithm'] = algorithm;
-      
+
       data.signature = signature;
       data.public_key = JSON.stringify(publicKeyInfo);
     }
-    
+
     return data;
   }
-  
+
   private setRequestFields(data: Audit.LogData, options: Audit.LogOptions) {
     if (options?.verbose) {
       data.verbose = options.verbose;
     }
-    
+
     if (options?.verify) {
       data.verbose = true;
       if (this.prevUnpublishedRootHash != undefined) {
@@ -173,33 +174,33 @@ export class AuditLogsService {
       }
     }
   }
-  
+
   private processLogResponse(result: Audit.LogResponse, options: Audit.LogOptions) {
     const newUnpublishedRootHash = result.unpublished_root;
-    
+
     if (!options?.skipEventVerification) {
       this.verifyHash(result.envelope, result.hash);
       result.signature_verification = verifySignature(result.envelope);
     }
-    
+
     if (options?.verify) {
       result.membership_verification = verifyLogMembershipProof({
         log: result,
         newUnpublishedRootHash: newUnpublishedRootHash,
       });
-      
+
       result.consistency_verification = verifyLogConsistencyProof({
         log: result,
         newUnpublishedRoot: newUnpublishedRootHash,
         prevUnpublishedRoot: this.prevUnpublishedRootHash,
       });
     }
-    
+
     if (newUnpublishedRootHash !== undefined) {
       this.prevUnpublishedRootHash = newUnpublishedRootHash;
     }
   }
-  
+
   private verifyHash(
     envelope: Audit.EventEnvelope | undefined,
     hash: string | undefined,
@@ -207,7 +208,7 @@ export class AuditLogsService {
     if (envelope === undefined || hash === undefined) {
       return;
     }
-    
+
     if (!verifyLogHash(envelope, hash)) {
       throw new InternalServerErrorException(
         'Error: Fail event hash verification. Hash: ' + hash,
@@ -215,7 +216,7 @@ export class AuditLogsService {
       );
     }
   }
-  
+
   /**
    * @summary Search the log
    * @description Search for events that match the provided search criteria.
@@ -254,11 +255,11 @@ export class AuditLogsService {
       order_by: 'received_at',
       config_id: this.configService.get('AUDIT_LOG_CONFIG_ID'),
     };
-    
+
     const payload: Audit.SearchParams = { query };
     Object.assign(payload, defaults);
     Object.assign(payload, queryOptions);
-    
+
     if (options?.verifyConsistency) {
       payload.verbose = true;
     }
@@ -270,7 +271,7 @@ export class AuditLogsService {
     console.log(response)
     return this.processSearchResponse(response, options);
   }
-  
+
   /**
    * @summary Results of a search
    * @description Fetch paginated results of a previously executed search.
@@ -298,20 +299,20 @@ export class AuditLogsService {
     if (!id) {
       throw new Error('Missing required `id` parameter');
     }
-    
+
     const payload = {
       id,
       limit,
       offset,
     };
-    
+
     const response: PangeaResponse<Audit.SearchResponse> = await this.httpService.post(
       'v1/results',
       payload
     ).toPromise().then((result) => result.data);
     return this.processSearchResponse(response, options);
   }
-  
+
   /**
    * @summary Log streaming endpoint
    * @description This API allows 3rd party vendors (like Auth0) to stream
@@ -344,7 +345,7 @@ export class AuditLogsService {
   logStream(data: object): Promise<PangeaResponse<{}>> {
     return this.httpService.post('v1/log_stream', data).toPromise().then((result) => result.data);
   }
-  
+
   /**
    * @summary Tamperproof verification
    * @description Returns current root hash and consistency proof.
@@ -358,14 +359,14 @@ export class AuditLogsService {
    */
   root(size: number = 0): Promise<PangeaResponse<Audit.RootResult>> {
     const data: Audit.RootParams = {};
-    
+
     if (size > 0) {
       data.tree_size = size;
     }
-    
+
     return this.httpService.post('v1/root', data).toPromise().then((result) => result.data);
   }
-  
+
   /**
    * @summary Download search results
    * @description Get all search results as a compressed (gzip) CSV file.
@@ -385,7 +386,7 @@ export class AuditLogsService {
   ): Promise<PangeaResponse<Audit.DownloadResult>> {
     return this.httpService.post('v1/download_results', request).toPromise().then((result) => result.data);
   }
-  
+
   async processSearchResponse(
     response: PangeaResponse<Audit.SearchResponse>,
     options: Audit.SearchOptions
@@ -393,27 +394,27 @@ export class AuditLogsService {
     if (!response.success) {
       return response;
     }
-    
+
     const localRoot = async (treeSize: number) => {
       const response = await this.root(treeSize);
       const root: Audit.Root = response.result.data;
       return root;
     };
-    
+
     if (!options?.skipEventVerification) {
       response.result.events.forEach((record: Audit.AuditRecord) => {
         this.verifyHash(record.envelope, record.hash);
         record.signature_verification = verifySignature(record.envelope);
       });
     }
-    
+
     if (options?.verifyConsistency) {
       const root = response.result.root;
       if (root !== undefined) {
         const treeName = root?.tree_name;
         const treeSizes = new Set<number>();
         treeSizes.add(root?.size ?? 0);
-        
+
         response.result.events.forEach((record: Audit.AuditRecord) => {
           if (record.leaf_index !== undefined) {
             const idx = Number(record.leaf_index);
@@ -423,20 +424,20 @@ export class AuditLogsService {
             }
           }
         });
-        
+
         this.publishedRoots = await this.getArweavePublishedRoots(
           treeName,
           Array.from(treeSizes),
           localRoot
         );
       }
-      
+
       response.result.events.forEach((record: Audit.AuditRecord) => {
         record.membership_verification = verifyRecordMembershipProof({
           root: record.published ? root : response.result.unpublished_root,
           record: record,
         });
-        
+
         record.consistency_verification = verifyRecordConsistencyProof({
           publishedRoots: this.publishedRoots,
           record: record,
@@ -445,22 +446,22 @@ export class AuditLogsService {
     }
     return response;
   }
-  
+
   private async getArweavePublishedRoots(
     treeName: string,
     treeSizes: number[],
     fetchRoot: (treeSize: number) => Promise<Audit.Root>
   ): Promise<PublishedRoots> {
     if (!treeSizes.length) return {};
-    
-    
+
+
     const ARWEAVE_BASE_URL = 'https://arweave.net';
     const ARWEAVE_GRAPHQL_URL = `${ARWEAVE_BASE_URL}/graphql`;
-    
+
     const arweaveTransactionUrl = (transactionId: string): string => {
       return `${ARWEAVE_BASE_URL}/${transactionId}/`;
     };
-    
+
     const query = `
 {
     transactions(
@@ -487,47 +488,47 @@ export class AuditLogsService {
     }
 }
     `;
-    
-    
+
+
     const response = await this.httpService.post(ARWEAVE_GRAPHQL_URL, { query })
                                .toPromise()
                                .then((result) => result.data);
-    
-    
+
+
     const publishedRoots: PublishedRoots = {};
     const body: any = response.body as JSON;
     const edges = body?.data?.transactions?.edges ?? [];
-    
+
     for (let idx = 0; idx < edges.length; idx++) {
       const edge = edges[idx];
-      
+
       const nodeId = edge?.node?.id;
       const tags = edge?.node?.tags ?? [];
-      
+
       const treeSizeTags = tags.filter((tag: any) => tag?.name === 'tree_size');
-      
+
       if (!treeSizeTags.length) continue;
-      
+
       const treeSize = treeSizeTags[0]?.value;
       const transactionUrl = arweaveTransactionUrl(nodeId);
-      
+
       const response = await this.httpService.post(transactionUrl).toPromise().then((result) => result.data);
-      
+
       // @ts-ignore
       publishedRoots[treeSize] = {
         ...JSON.parse(response),
         transactionId: nodeId,
       };
     }
-    
+
     for (let idx = 0; idx < treeSizes.length; idx++) {
       const treeSize = treeSizes[idx];
-      
+
       if (treeSize && !(treeSize in publishedRoots)) {
         const root = await fetchRoot(treeSize).catch((err) => {
           console.log('Failed to fetch server roots', err);
         });
-        
+
         if (root) {
           publishedRoots[treeSize] = {
             ...root,
@@ -535,9 +536,9 @@ export class AuditLogsService {
         }
       }
     }
-    
+
     return publishedRoots;
   }
-  
-  
+
+
 }
