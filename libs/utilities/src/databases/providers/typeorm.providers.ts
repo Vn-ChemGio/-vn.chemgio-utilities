@@ -51,44 +51,48 @@ export function createTypeOrmProviders(
 const getCustomRepository = <T extends BaseEntity & { id: string | number } = BaseEntity & { id: string }>(
   repository: Repository<T>,
   request: Request,
-) => Object.assign(Object.create(repository), {
+): Repository<T> => Object.assign(Object.create(repository), {
   ...repository,
-  create: (createData: DeepPartial<T>) =>
-    repository.create({
-      ...createData,
-      createdBy: request.user?.id,
-    }),
-
-  createMany(createData: DeepPartial<T>[]) {
-    const result = repository.create(
-      createData.map((item) => ({
-        ...item,
+  create: (createData: DeepPartial<T> | DeepPartial<T>[]) =>
+    Array.isArray(createData) ? createData.map((data) => repository.create({
+        ...data,
         createdBy: request.user?.id,
-      })),
-    );
+      })) :
+      repository.create({
+        ...createData,
+        createdBy: request.user?.id,
+      }),
 
-    return this.repository.save(result);
-  },
 
+  update: (criteria: string | string[] | number | number[] | Date | Date[] | ObjectId | ObjectId[] | FindOptionsWhere<T>, updateDatabaseDto: QueryDeepPartialEntity<T>) =>
+    Array.isArray(criteria) ? criteria.map((data) => repository.update(data, {
+        ...data,
+        updatedBy: request.user?.id,
+      })) :
+      repository.update(criteria, {
+        ...updateDatabaseDto,
+        updatedBy: request.user?.id,
+      }),
 
-  update(criteria: string | string[] | number | number[] | Date | Date[] | ObjectId | ObjectId[] | FindOptionsWhere<T>, updateDatabaseDto: QueryDeepPartialEntity<T>) {
-    return repository.update(criteria, {
-      ...updateDatabaseDto,
-      updatedBy: request.user?.id,
-    });
-  },
-
-  upsert(
+  upsert: (
     entityOrEntities: QueryDeepPartialEntity<T>,
     conflictPathsOrOptions: string[] | UpsertOptions<T>,
-  ) {
-    return repository.upsert(
-      {
-        ...entityOrEntities,
-        createdBy: request.user?.id,
-        updatedBy: request.user?.id,
-      },
-      conflictPathsOrOptions,
-    );
+  ) => {
+    Array.isArray(entityOrEntities) ? entityOrEntities.map((entity) => repository.upsert(
+        {
+          ...entityOrEntities,
+          createdBy: request.user?.id,
+          updatedBy: request.user?.id,
+        },
+        conflictPathsOrOptions,
+      )) :
+      repository.upsert(
+        {
+          ...entityOrEntities,
+          createdBy: request.user?.id,
+          updatedBy: request.user?.id,
+        },
+        conflictPathsOrOptions,
+      );
   },
 });
