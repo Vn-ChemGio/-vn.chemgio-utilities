@@ -1,9 +1,16 @@
-import { REQUEST } from '@nestjs/core';
-import { Inject, Injectable, InternalServerErrorException, } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import {
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { REQUEST } from '@nestjs/core';
 import PangeaResponse from '../utils/response';
-import { canonicalizeEvent, eventOrderAndStringifySubfields, } from '../utils/utils';
+import {
+  canonicalizeEvent,
+  eventOrderAndStringifySubfields,
+} from '../utils/utils';
 import {
   PublishedRoots,
   verifyLogConsistencyProof,
@@ -43,6 +50,7 @@ export class AuditLogsService {
    *   - old (string|object): The value of a record before it was changed.
    * @param {Audit.LogOptions} options Log options. The following log options are supported:
    *   - verbose (bool): Return a verbose response, including the canonical event hash and received_at time.
+   * @param {Function} callback a function to process when error
    * @returns A promise representing an async call to the /v1/log endpoint.
    * @example
    * constructor(
@@ -59,17 +67,23 @@ export class AuditLogsService {
    *
    * const response = await this.auditLogsService.log(auditData, options);
    */
-  public async log(event: Audit.EventData, options: Audit.LogOptions = {}) {
+  public async log(
+    event: Audit.EventData,
+    options: Audit.LogOptions = {},
+    callback: { (error: Error): void } = () => {},
+  ) {
     const data = this.getLogEvent(event, options);
     this.setRequestFields(data, options);
 
-    const response: PangeaResponse<Audit.LogResponse> = await this.httpService
-                                                                  .post('v1/log', data)
-                                                                  .toPromise()
-                                                                  .then((response) => response.data);
-
-    this.processLogResponse(response.result, options);
-    return response;
+    return this.httpService
+      .post('v1/log', data)
+      .toPromise()
+      .then((response) => response.data)
+      .then((response) => {
+        this.processLogResponse(response.result, options);
+        return response;
+      })
+      .catch(callback);
   }
 
   /**
@@ -78,6 +92,7 @@ export class AuditLogsService {
    * @operationId audit_post_v2_log
    * @param {Audit.Event[]} events
    * @param {Audit.LogOptions} options
+   * @param {Function} callback a function to process when error
    * @returns {Promise} - A promise representing an async call to the /v2/log endpoint.
    * @example
    * constructor(
@@ -90,10 +105,17 @@ export class AuditLogsService {
    *
    * const response = await this.auditLogsService.logBulk(events, options);
    */
-  async logBulk(
+  public async logBulk(
     events: Audit.Event[],
     options: Audit.LogOptions = {},
+    callback: { (error: Error): void } = () => {},
   ): Promise<PangeaResponse<Audit.LogBulkResponse>> {
+    if (!events.length) {
+      return {
+        result: { results: [] },
+      } as PangeaResponse<Audit.LogBulkResponse>;
+    }
+
     const logEvents: Audit.LogEvent[] = [];
     events.forEach((event) => {
       logEvents.push(this.getLogEvent(event, options));
@@ -106,16 +128,17 @@ export class AuditLogsService {
     };
 
     options.verify = false; // Bulk API does not verify
-    const response: PangeaResponse<Audit.LogBulkResponse> =
-      await this.httpService
-                .post('v2/log', data)
-                .toPromise()
-                .then((result) => result.data);
-
-    response.result.results.forEach((result) => {
-      this.processLogResponse(result, options);
-    });
-    return response;
+    return this.httpService
+      .post('v2/log', data)
+      .toPromise()
+      .then((result) => result.data)
+      .then((response) => {
+        response.result.results.forEach((result) => {
+          this.processLogResponse(result, options);
+        });
+        return response;
+      })
+      .catch(callback);
   }
 
   private getLogEvent(
@@ -175,7 +198,10 @@ export class AuditLogsService {
     }
   }
 
-  private processLogResponse(result: Audit.LogResponse, options: Audit.LogOptions) {
+  private processLogResponse(
+    result: Audit.LogResponse,
+    options: Audit.LogOptions,
+  ) {
     const newUnpublishedRootHash = result.unpublished_root;
 
     if (!options?.skipEventVerification) {
@@ -247,7 +273,7 @@ export class AuditLogsService {
   async search(
     query: string,
     queryOptions: Audit.SearchParamsOptions,
-    options: Audit.SearchOptions
+    options: Audit.SearchOptions,
   ): Promise<PangeaResponse<Audit.SearchResponse>> {
     const defaults: Audit.SearchParamsOptions = {
       limit: 20,
@@ -263,12 +289,13 @@ export class AuditLogsService {
     if (options?.verifyConsistency) {
       payload.verbose = true;
     }
-    console.log(payload)
-    const response: PangeaResponse<Audit.SearchResponse> = await this.httpService.post(
-      'v1/search',
-      payload
-    ).toPromise().then((result) => result.data);
-    console.log(response)
+    console.log(payload);
+    const response: PangeaResponse<Audit.SearchResponse> =
+      await this.httpService
+        .post('v1/search', payload)
+        .toPromise()
+        .then((result) => result.data);
+    console.log(response);
     return this.processSearchResponse(response, options);
   }
 
@@ -294,7 +321,7 @@ export class AuditLogsService {
     id: string,
     limit = 20,
     offset = 0,
-    options: Audit.SearchOptions
+    options: Audit.SearchOptions,
   ): Promise<PangeaResponse<Audit.ResultResponse>> {
     if (!id) {
       throw new Error('Missing required `id` parameter');
@@ -306,10 +333,11 @@ export class AuditLogsService {
       offset,
     };
 
-    const response: PangeaResponse<Audit.SearchResponse> = await this.httpService.post(
-      'v1/results',
-      payload
-    ).toPromise().then((result) => result.data);
+    const response: PangeaResponse<Audit.SearchResponse> =
+      await this.httpService
+        .post('v1/results', payload)
+        .toPromise()
+        .then((result) => result.data);
     return this.processSearchResponse(response, options);
   }
 
@@ -342,8 +370,13 @@ export class AuditLogsService {
    * const response = await audit.logStream(data);
    * ```
    */
-  logStream(data: object): Promise<PangeaResponse<{}>> {
-    return this.httpService.post('v1/log_stream', data).toPromise().then((result) => result.data);
+  public async logStream(
+    data: object,
+  ): Promise<PangeaResponse<NonNullable<unknown>>> {
+    return this.httpService
+      .post('v1/log_stream', data)
+      .toPromise()
+      .then((result) => result.data);
   }
 
   /**
@@ -357,14 +390,17 @@ export class AuditLogsService {
    * const response = audit.root(7);
    * ```
    */
-  root(size: number = 0): Promise<PangeaResponse<Audit.RootResult>> {
+  async root(size: number = 0): Promise<PangeaResponse<Audit.RootResult>> {
     const data: Audit.RootParams = {};
 
     if (size > 0) {
       data.tree_size = size;
     }
 
-    return this.httpService.post('v1/root', data).toPromise().then((result) => result.data);
+    return this.httpService
+      .post('v1/root', data)
+      .toPromise()
+      .then((result) => result.data);
   }
 
   /**
@@ -382,14 +418,17 @@ export class AuditLogsService {
    * ```
    */
   downloadResults(
-    request: Audit.DownloadRequest
+    request: Audit.DownloadRequest,
   ): Promise<PangeaResponse<Audit.DownloadResult>> {
-    return this.httpService.post('v1/download_results', request).toPromise().then((result) => result.data);
+    return this.httpService
+      .post('v1/download_results', request)
+      .toPromise()
+      .then((result) => result.data);
   }
 
   async processSearchResponse(
     response: PangeaResponse<Audit.SearchResponse>,
-    options: Audit.SearchOptions
+    options: Audit.SearchOptions,
   ): Promise<PangeaResponse<Audit.SearchResponse>> {
     if (!response.success) {
       return response;
@@ -428,7 +467,7 @@ export class AuditLogsService {
         this.publishedRoots = await this.getArweavePublishedRoots(
           treeName,
           Array.from(treeSizes),
-          localRoot
+          localRoot,
         );
       }
 
@@ -450,10 +489,9 @@ export class AuditLogsService {
   private async getArweavePublishedRoots(
     treeName: string,
     treeSizes: number[],
-    fetchRoot: (treeSize: number) => Promise<Audit.Root>
+    fetchRoot: (treeSize: number) => Promise<Audit.Root>,
   ): Promise<PublishedRoots> {
     if (!treeSizes.length) return {};
-
 
     const ARWEAVE_BASE_URL = 'https://arweave.net';
     const ARWEAVE_GRAPHQL_URL = `${ARWEAVE_BASE_URL}/graphql`;
@@ -489,11 +527,10 @@ export class AuditLogsService {
 }
     `;
 
-
-    const response = await this.httpService.post(ARWEAVE_GRAPHQL_URL, { query })
-                               .toPromise()
-                               .then((result) => result.data);
-
+    const response = await this.httpService
+      .post(ARWEAVE_GRAPHQL_URL, { query })
+      .toPromise()
+      .then((result) => result.data);
 
     const publishedRoots: PublishedRoots = {};
     const body: any = response.body as JSON;
@@ -512,9 +549,11 @@ export class AuditLogsService {
       const treeSize = treeSizeTags[0]?.value;
       const transactionUrl = arweaveTransactionUrl(nodeId);
 
-      const response = await this.httpService.post(transactionUrl).toPromise().then((result) => result.data);
+      const response = await this.httpService
+        .post(transactionUrl)
+        .toPromise()
+        .then((result) => result.data);
 
-      // @ts-ignore
       publishedRoots[treeSize] = {
         ...JSON.parse(response),
         transactionId: nodeId,
@@ -539,6 +578,4 @@ export class AuditLogsService {
 
     return publishedRoots;
   }
-
-
 }
