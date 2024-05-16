@@ -158,7 +158,7 @@ export class AuditLogsService {
       method,
       userAgent,
     });
-
+    event.service_name = this.configService.get('AUDIT_LOG_SERVICE_NAME');
     event = eventOrderAndStringifySubfields(event);
     const data: Audit.LogData = {
       event: event,
