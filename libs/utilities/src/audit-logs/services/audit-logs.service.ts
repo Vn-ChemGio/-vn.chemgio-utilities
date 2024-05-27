@@ -149,10 +149,10 @@ export class AuditLogsService {
     event.actor = this.request.user?.id;
 
     const ip =
-      this.request.headers['x-forwarded-for'] ||
+      this.request.headers?.['x-forwarded-for'] ||
       this.request.connection?.remoteAddress;
-    const method = this.request.headers['method'];
-    const userAgent = this.request.headers['user-agent'];
+    const method = this.request.headers?.['method'];
+    const userAgent = this.request.headers?.['user-agent'];
     event.source = JSON.stringify({
       ip,
       method,
@@ -289,13 +289,13 @@ export class AuditLogsService {
     if (options?.verifyConsistency) {
       payload.verbose = true;
     }
-    console.log(payload);
+
     const response: PangeaResponse<Audit.SearchResponse> =
       await this.httpService
         .post('v1/search', payload)
         .toPromise()
         .then((result) => result.data);
-    console.log(response);
+
     return this.processSearchResponse(response, options);
   }
 
